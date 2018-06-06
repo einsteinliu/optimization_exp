@@ -39,6 +39,18 @@ static double gauss_rand(double mean, double sigma){
   return mean + sigma * y * std::sqrt(-2.0 * log(r2) / r2);
 }
 
+int uniform(int from, int to){
+  return static_cast<int>(uniform_rand(from, to));
+}
+
+double uniform(){
+  return uniform_rand(0., 1.);
+}
+
+double gaussian(double sigma){
+  return gauss_rand(0., sigma);
+}
+
 struct CameraPose{
     Matrix3d R;
     Vector3d t;
@@ -47,9 +59,9 @@ struct CameraPose{
 vector< CameraPose > generate_camera_poses()
 {
     vector< CameraPose > poses{};
-    for(int i=0;i<19;i++)
+    for(int i=0;i<15;i++)
     {
-        poses.push_back(CameraPose{MatrixXd::Identity(3,3),Vector3d{(double)i,0.0,0.0}});
+        poses.push_back(CameraPose{MatrixXd::Identity(3,3),Vector3d{i*0.04-1.,0,0}});
     }
     return poses;
 }
@@ -59,10 +71,13 @@ vector< Vector3d > generate_points_cloud()
     double unit = 3.141592653/180;
     double curr_angle = 0.0;
     vector< Vector3d > points{};
-    for(int i=0;i<100;i++)
+    for(int i=0;i<500;i++)
     {
-        points.push_back(Vector3d{5*cos(curr_angle),5*sin(curr_angle),i*0.5});
-        curr_angle += unit;
+        //points.push_back(Vector3d{5*cos(curr_angle),5*sin(curr_angle),i*0.5});
+        points.push_back(Vector3d((uniform()-0.5)*3,
+                                  uniform()-0.5,
+                                  uniform()+3));
+        //curr_angle += unit;
     }
     return points;
 }
@@ -116,8 +131,6 @@ int main()
     double focal_length= 1000.;
     Vector2d principal_point(320., 240.);
 
-    vector<g2o::SE3Quat,
-        aligned_allocator<g2o::SE3Quat> > true_poses;
     g2o::CameraParameters * cam_params
         = new g2o::CameraParameters (focal_length, principal_point, 0.);
     cam_params->setId(0);
@@ -129,7 +142,7 @@ int main()
     vector<g2o::VertexSE3Expmap*> se3_vertices;
     int vertex_id = 0;
     for(auto pose:poses)
-    {
+    {//Add the pose vertices
         g2o::SE3Quat curr_pose(pose.R,pose.t);
         g2o::VertexSE3Expmap* vertex = new g2o::VertexSE3Expmap();
         vertex->setId(vertex_id);
@@ -141,7 +154,8 @@ int main()
         vertex_id++;
     }
 
-    map<g2o::VertexSE3Expmap*,Vector2d> image_pixels;
+    map<g2o::VertexSE3Expmap*,Vector2d> vertex_connections;
+
     for(auto point:points)
     {
         g2o::VertexSBAPointXYZ* X_Vertex = new g2o::VertexSBAPointXYZ();
@@ -151,25 +165,25 @@ int main()
                                           gauss_rand(0., 1),
                                           gauss_rand(0., 1)));
 
-        image_pixels.clear();
+        vertex_connections.clear();
         for(auto pose_vertex:se3_vertices)
         {
             Vector2d image_pixel = cam_params->cam_map(pose_vertex->estimate().map(point));
             if (image_pixel[0]>=0 && image_pixel[1]>=0 && image_pixel[0]<640 && image_pixel[1]<480)
             {
-                image_pixels[pose_vertex]=image_pixel;
+                vertex_connections[pose_vertex]=image_pixel;
             }
         }
 
-        if(image_pixels.size()>=2)
-        {
+        if(vertex_connections.size()>=2)
+        {//If the 3D point is visible to more than 2 poses
             optimizer.addVertex(X_Vertex);
             vertex_id++;
-            for(auto proj:image_pixels)
+            for(auto proj:vertex_connections)
             {
                 g2o::EdgeProjectXYZ2UV* edge = new g2o::EdgeProjectXYZ2UV();
                 edge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(X_Vertex));
-                edge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(proj.first));
+                edge->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(proj.first));
                 edge->setMeasurement(proj.second+
                                      Vector2d(gauss_rand(0.0,3),
                                               gauss_rand(0.0,3)));
@@ -184,7 +198,8 @@ int main()
             delete X_Vertex;
         }
     }
-
+    int vertex_num = optimizer.vertices().size();
+    int edge_num = optimizer.edges().size();
     optimizer.initializeOptimization();
     optimizer.optimize(10);
 
