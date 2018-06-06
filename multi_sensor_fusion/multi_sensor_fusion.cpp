@@ -106,12 +106,21 @@ void test_projection()
 
 }
 
+double compute_error(g2o::SparseOptimizer& optimizer, map<int,Vector3d>& estimation_gt)
+{
+    double error = 0;
+    for(auto esti_gt:estimation_gt)
+    {
+        error += (((g2o::VertexSBAPointXYZ*)optimizer.vertex(esti_gt.first))->estimate()-esti_gt.second).norm();
+    }
+    return error/estimation_gt.size();
+}
+
 int main()
 {
     //test_projection();
     auto poses = generate_camera_poses();
     auto points = generate_points_cloud();
-
     bool DENSE = false;
 
     g2o::SparseOptimizer optimizer;
@@ -155,7 +164,7 @@ int main()
     }
 
     map<g2o::VertexSE3Expmap*,Vector2d> vertex_connections;
-
+    map<int,Vector3d> estimation_gt;
     for(auto point:points)
     {
         g2o::VertexSBAPointXYZ* X_Vertex = new g2o::VertexSBAPointXYZ();
@@ -178,6 +187,7 @@ int main()
         if(vertex_connections.size()>=2)
         {//If the 3D point is visible to more than 2 poses
             optimizer.addVertex(X_Vertex);
+            estimation_gt[vertex_id] = point;
             vertex_id++;
             for(auto proj:vertex_connections)
             {
@@ -185,8 +195,8 @@ int main()
                 edge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(X_Vertex));
                 edge->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(proj.first));
                 edge->setMeasurement(proj.second+
-                                     Vector2d(gauss_rand(0.0,3),
-                                              gauss_rand(0.0,3)));
+                                     Vector2d(gauss_rand(0.0,0.5),
+                                              gauss_rand(0.0,0.5)));
                 edge->information() = Matrix2d::Identity();
                 edge->setRobustKernel(new g2o::RobustKernelHuber());
                 edge->setParameterId(0,0);
@@ -198,11 +208,15 @@ int main()
             delete X_Vertex;
         }
     }
-    int vertex_num = optimizer.vertices().size();
-    int edge_num = optimizer.edges().size();
+
+
+    double before = compute_error(optimizer,estimation_gt);
+
     optimizer.initializeOptimization();
     optimizer.optimize(10);
 
+    double after = compute_error(optimizer,estimation_gt);
 
     return 0;
 }
+
