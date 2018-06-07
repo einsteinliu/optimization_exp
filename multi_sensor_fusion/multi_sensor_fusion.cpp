@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <vector>
 #include <math.h>
-
 #include <unordered_set>
 
 #include "g2o/core/sparse_optimizer.h"
@@ -15,11 +14,12 @@
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #include "g2o/solvers/dense/linear_solver_dense.h"
 #include "g2o/types/sba/types_six_dof_expmap.h"
-//#include "g2o/math_groups/se3quat.h"
+#include "g2o/types/slam3d/edge_xyz_prior.h"
+#include "g2o/types/slam3d/vertex_se3.h"
+#include "g2o/types/slam3d/vertex_pointxyz.h"
+#include "g2o/types/slam3d/edge_se3_pointxyz.h"
 #include "g2o/solvers/structure_only/structure_only_solver.h"
 
-//#include <opencv2/opencv.hpp>
-//#include <opencv2/viz.hpp>
 
 using namespace Eigen;
 using namespace std;
@@ -158,6 +158,7 @@ int main()
         if(vertex_id<2)
             vertex->setFixed(true);
         vertex->setEstimate(curr_pose);
+
         se3_vertices.push_back(vertex);
         optimizer.addVertex(vertex);
         vertex_id++;
@@ -195,8 +196,8 @@ int main()
                 edge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(X_Vertex));
                 edge->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(proj.first));
                 edge->setMeasurement(proj.second+
-                                     Vector2d(gauss_rand(0.0,0.5),
-                                              gauss_rand(0.0,0.5)));
+                                     Vector2d(gauss_rand(0.0,1),
+                                              gauss_rand(0.0,1)));
                 edge->information() = Matrix2d::Identity();
                 edge->setRobustKernel(new g2o::RobustKernelHuber());
                 edge->setParameterId(0,0);
@@ -207,8 +208,13 @@ int main()
         {
             delete X_Vertex;
         }
-    }
 
+        for(auto index:estimation_gt)
+        {
+            g2o::VertexPointXYZ* v = new g2o::VertexPointXYZ();
+            g2o::EdgeSE3PointXYZ* e = new g2o::EdgeSE3PointXYZ();
+        }
+    }   
 
     double before = compute_error(optimizer,estimation_gt);
 
@@ -216,7 +222,7 @@ int main()
     optimizer.optimize(10);
 
     double after = compute_error(optimizer,estimation_gt);
-
+    cout<<before<<","<<after<<endl;
     return 0;
 }
 

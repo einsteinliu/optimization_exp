@@ -2,6 +2,7 @@ find_package(OpenCV 3.0 QUIET)
 
 ADD_EXECUTABLE(multi_sensor_fusion
   multi_sensor_fusion.cpp
+  edge_se3exp_pointxyz_prior.cpp
 )
 
 INCLUDE_DIRECTORIES(${CHOLMOD_INCLUDE_DIR})
