@@ -18,6 +18,7 @@
 #include "g2o/types/slam3d/vertex_se3.h"
 #include "g2o/types/slam3d/vertex_pointxyz.h"
 #include "g2o/types/slam3d/edge_se3_pointxyz.h"
+#include "edge_se3exp_pointxyz_prior.h"
 #include "g2o/solvers/structure_only/structure_only_solver.h"
 
 
@@ -106,6 +107,7 @@ void test_projection()
 
 }
 
+
 double compute_error(g2o::SparseOptimizer& optimizer, map<int,Vector3d>& estimation_gt)
 {
     double error = 0;
@@ -114,6 +116,16 @@ double compute_error(g2o::SparseOptimizer& optimizer, map<int,Vector3d>& estimat
         error += (((g2o::VertexSBAPointXYZ*)optimizer.vertex(esti_gt.first))->estimate()-esti_gt.second).norm();
     }
     return error/estimation_gt.size();
+}
+
+double compute_pose_error(vector<g2o::VertexSE3Expmap*> measure,vector<CameraPose> ground_truth)
+{
+    double error = 0;
+    for(int i=0;i<measure.size();i++)
+    {
+        error += (((g2o::SE3Quat)(measure[i]->estimate())).translation() - ground_truth[i].t).norm();
+    }
+    return error/measure.size();
 }
 
 int main()
@@ -157,11 +169,24 @@ int main()
         vertex->setId(vertex_id);
         if(vertex_id<2)
             vertex->setFixed(true);
-        vertex->setEstimate(curr_pose);
+        else
+            vertex->setFixed(false);
+
+        curr_pose.setTranslation(curr_pose.translation()+Vector3d(uniform(),
+                                                                  uniform(),
+                                                                  uniform()));
+        vertex->setEstimate(curr_pose);                      
 
         se3_vertices.push_back(vertex);
         optimizer.addVertex(vertex);
         vertex_id++;
+
+        g2o::EdgeSE3ExpXYZPointPrior* gps_constrains = new g2o::EdgeSE3ExpXYZPointPrior();
+        gps_constrains->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex));
+        gps_constrains->setMeasurement(pose.t);
+        //gps_constrains->information() = 10*Matrix3d::Identity();
+        gps_constrains->setInformation(10000*Matrix3d::Identity());
+        optimizer.addEdge(gps_constrains);
     }
 
     map<g2o::VertexSE3Expmap*,Vector2d> vertex_connections;
@@ -208,21 +233,20 @@ int main()
         {
             delete X_Vertex;
         }
-
-        for(auto index:estimation_gt)
-        {
-            g2o::VertexPointXYZ* v = new g2o::VertexPointXYZ();
-            g2o::EdgeSE3PointXYZ* e = new g2o::EdgeSE3PointXYZ();
-        }
-    }   
+    }
 
     double before = compute_error(optimizer,estimation_gt);
+    double pose_before = compute_pose_error(se3_vertices,poses);
+
 
     optimizer.initializeOptimization();
     optimizer.optimize(10);
 
     double after = compute_error(optimizer,estimation_gt);
+    double pose_after = compute_pose_error(se3_vertices,poses);
     cout<<before<<","<<after<<endl;
+    cout<<pose_before<<","<<pose_after<<endl;
+
     return 0;
 }
 

@@ -67,7 +67,69 @@ namespace g2o {
   }
 
   void EdgeSE3ExpXYZPointPrior::linearizeOplus(){
-      //_jacobianOplusXi = Matrix3::Identity();
+
+//      _jacobianOplusXi(0,0) = 1.0;
+//      _jacobianOplusXi(0,1) = 0.0;
+//      _jacobianOplusXi(0,2) = 0.0;
+//      _jacobianOplusXi(0,3) = 0.0;
+//      _jacobianOplusXi(0,4) = 0.0;
+//      _jacobianOplusXi(0,5) = 0.0;
+
+//      _jacobianOplusXi(1,0) = 0.0;
+//      _jacobianOplusXi(1,1) = 1.0;
+//      _jacobianOplusXi(1,2) = 0.0;
+//      _jacobianOplusXi(1,3) = 0.0;
+//      _jacobianOplusXi(1,4) = 0.0;
+//      _jacobianOplusXi(1,5) = 0.0;
+
+//      _jacobianOplusXi(2,0) = 0.0;
+//      _jacobianOplusXi(2,1) = 0.0;
+//      _jacobianOplusXi(2,2) = 1.0;
+//      _jacobianOplusXi(2,3) = 0.0;
+//      _jacobianOplusXi(2,4) = 0.0;
+//      _jacobianOplusXi(2,5) = 0.0;
+
+      _jacobianOplusXi(0,0) = 0.0;
+      _jacobianOplusXi(0,1) = 0.0;
+      _jacobianOplusXi(0,2) = 0.0;
+      _jacobianOplusXi(0,3) = 1.0;
+      _jacobianOplusXi(0,4) = 0.0;
+      _jacobianOplusXi(0,5) = 0.0;
+
+      _jacobianOplusXi(1,0) = 0.0;
+      _jacobianOplusXi(1,1) = 0.0;
+      _jacobianOplusXi(1,2) = 0.0;
+      _jacobianOplusXi(1,3) = 0.0;
+      _jacobianOplusXi(1,4) = 1.0;
+      _jacobianOplusXi(1,5) = 0.0;
+
+      _jacobianOplusXi(2,0) = 0.0;
+      _jacobianOplusXi(2,1) = 0.0;
+      _jacobianOplusXi(2,2) = 0.0;
+      _jacobianOplusXi(2,3) = 0.0;
+      _jacobianOplusXi(2,4) = 0.0;
+      _jacobianOplusXi(2,5) = 1.0;
+
+//      _jacobianOplusXi(0,0) = 1.0;
+//      _jacobianOplusXi(0,1) = 1.0;
+//      _jacobianOplusXi(0,2) = 1.0;
+//      _jacobianOplusXi(0,3) = 1.0;
+//      _jacobianOplusXi(0,4) = 1.0;
+//      _jacobianOplusXi(0,5) = 1.0;
+
+//      _jacobianOplusXi(1,0) = 1.0;
+//      _jacobianOplusXi(1,1) = 1.0;
+//      _jacobianOplusXi(1,2) = 1.0;
+//      _jacobianOplusXi(1,3) = 1.0;
+//      _jacobianOplusXi(1,4) = 1.0;
+//      _jacobianOplusXi(1,5) = 1.0;
+
+//      _jacobianOplusXi(2,0) = 1.0;
+//      _jacobianOplusXi(2,1) = 1.0;
+//      _jacobianOplusXi(2,2) = 1.0;
+//      _jacobianOplusXi(2,3) = 1.0;
+//      _jacobianOplusXi(2,4) = 1.0;
+//      _jacobianOplusXi(2,5) = 1.0;
   }
 
   bool EdgeSE3ExpXYZPointPrior::setMeasurementFromState(){
