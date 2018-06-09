@@ -60,9 +60,10 @@ struct CameraPose{
 vector< CameraPose > generate_camera_poses()
 {
     vector< CameraPose > poses{};
-    for(int i=0;i<15;i++)
+    for(int i=0;i<3;i++)
     {
-        poses.push_back(CameraPose{MatrixXd::Identity(3,3),Vector3d{i*0.04-1.,0,0}});
+        //poses.push_back(CameraPose{MatrixXd::Identity(3,3),Vector3d{i*0.4-1.,0,0}});
+        poses.push_back(CameraPose{MatrixXd::Identity(3,3),Vector3d{0,0,i}});
     }
     return poses;
 }
@@ -72,13 +73,13 @@ vector< Vector3d > generate_points_cloud()
     double unit = 3.141592653/180;
     double curr_angle = 0.0;
     vector< Vector3d > points{};
-    for(int i=0;i<500;i++)
+    for(int i=0;i<10;i++)
     {
-        //points.push_back(Vector3d{5*cos(curr_angle),5*sin(curr_angle),i*0.5});
-        points.push_back(Vector3d((uniform()-0.5)*3,
+        points.push_back(Vector3d{2*cos(curr_angle),2*sin(curr_angle),10});
+        /*points.push_back(Vector3d((uniform()-0.5)*3,
                                   uniform()-0.5,
-                                  uniform()+3));
-        //curr_angle += unit;
+                                  uniform()+3));*/
+        curr_angle += unit;
     }
     return points;
 }
@@ -122,7 +123,7 @@ double compute_pose_error(vector<g2o::VertexSE3Expmap*> measure,vector<CameraPos
 {
     double error = 0;
     for(int i=0;i<measure.size();i++)
-    {
+    {        
         error += (((g2o::SE3Quat)(measure[i]->estimate())).translation() - ground_truth[i].t).norm();
     }
     return error/measure.size();
@@ -183,9 +184,10 @@ int main()
 
         g2o::EdgeSE3ExpXYZPointPrior* gps_constrains = new g2o::EdgeSE3ExpXYZPointPrior();
         gps_constrains->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex));
-        gps_constrains->setMeasurement(pose.t);
-        //gps_constrains->information() = 10*Matrix3d::Identity();
-        gps_constrains->setInformation(10000*Matrix3d::Identity());
+        gps_constrains->setMeasurement(pose.t+Vector3d(uniform()/5,
+                                                        uniform()/5,
+                                                        uniform()/5));
+        gps_constrains->setInformation(Matrix3d::Identity());
         optimizer.addEdge(gps_constrains);
     }
 
@@ -240,7 +242,8 @@ int main()
 
 
     optimizer.initializeOptimization();
-    optimizer.optimize(10);
+    optimizer.setVerbose(true);
+    optimizer.optimize(20);
 
     double after = compute_error(optimizer,estimation_gt);
     double pose_after = compute_pose_error(se3_vertices,poses);
