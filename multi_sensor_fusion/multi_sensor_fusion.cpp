@@ -70,12 +70,12 @@ vector< CameraPose > generate_camera_poses()
 
 vector< Vector3d > generate_points_cloud()
 {
-    double unit = 3.141592653/180;
+    double unit = 3.0f*3.141592653/180;
     double curr_angle = 0.0;
     vector< Vector3d > points{};
     for(int i=0;i<10;i++)
     {
-        points.push_back(Vector3d{2*cos(curr_angle),2*sin(curr_angle),10});
+       points.push_back(Vector3d{2*cos(curr_angle),2*sin(curr_angle),10});
         /*points.push_back(Vector3d((uniform()-0.5)*3,
                                   uniform()-0.5,
                                   uniform()+3));*/
@@ -105,7 +105,6 @@ void test_projection()
     point[0] = 0;
     point[1] = 0;
     x = cam_params->cam_map(pose.map(point));        
-
 }
 
 
@@ -148,6 +147,7 @@ int main()
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(
       g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linearSolver))
     );
+
     optimizer.setAlgorithm(solver);
 
     double focal_length= 1000.;
@@ -168,14 +168,11 @@ int main()
         g2o::SE3Quat curr_pose(pose.R,pose.t);
         g2o::VertexSE3Expmap* vertex = new g2o::VertexSE3Expmap();
         vertex->setId(vertex_id);
-        if(vertex_id<2)
-            vertex->setFixed(true);
-        else
-            vertex->setFixed(false);
-
-        curr_pose.setTranslation(curr_pose.translation()+Vector3d(uniform(),
-                                                                  uniform(),
-                                                                  uniform()));
+        vertex->setFixed(false);
+        curr_pose.setTranslation(curr_pose.translation());
+//        curr_pose.setTranslation(curr_pose.translation()+Vector3d(uniform(),
+//                                                                  uniform(),
+//                                                                  uniform()));
         vertex->setEstimate(curr_pose);                      
 
         se3_vertices.push_back(vertex);
@@ -184,10 +181,8 @@ int main()
 
         g2o::EdgeSE3ExpXYZPointPrior* gps_constrains = new g2o::EdgeSE3ExpXYZPointPrior();
         gps_constrains->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex));
-        gps_constrains->setMeasurement(pose.t+Vector3d(uniform()/5,
-                                                        uniform()/5,
-                                                        uniform()/5));
-        gps_constrains->setInformation(Matrix3d::Identity());
+        gps_constrains->setMeasurement(pose.t);
+        gps_constrains->setInformation(Matrix3d::Identity()*2);
         optimizer.addEdge(gps_constrains);
     }
 
@@ -198,7 +193,7 @@ int main()
         g2o::VertexSBAPointXYZ* X_Vertex = new g2o::VertexSBAPointXYZ();
         X_Vertex->setId(vertex_id);
         X_Vertex->setMarginalized(true);
-        X_Vertex->setEstimate(point + Vector3d(gauss_rand(0., 1),
+        X_Vertex->setEstimate(point + 3.0f*Vector3d(gauss_rand(0., 1),
                                           gauss_rand(0., 1),
                                           gauss_rand(0., 1)));
 
@@ -222,9 +217,7 @@ int main()
                 g2o::EdgeProjectXYZ2UV* edge = new g2o::EdgeProjectXYZ2UV();
                 edge->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(X_Vertex));
                 edge->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(proj.first));
-                edge->setMeasurement(proj.second+
-                                     Vector2d(gauss_rand(0.0,1),
-                                              gauss_rand(0.0,1)));
+                edge->setMeasurement(proj.second);
                 edge->information() = Matrix2d::Identity();
                 edge->setRobustKernel(new g2o::RobustKernelHuber());
                 edge->setParameterId(0,0);
@@ -243,7 +236,7 @@ int main()
 
     optimizer.initializeOptimization();
     optimizer.setVerbose(true);
-    optimizer.optimize(20);
+    optimizer.optimize(80);
 
     double after = compute_error(optimizer,estimation_gt);
     double pose_after = compute_pose_error(se3_vertices,poses);

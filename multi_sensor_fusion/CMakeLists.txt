@@ -6,8 +6,16 @@ ADD_EXECUTABLE(multi_sensor_fusion
   #edge_se3exp_pointxyz.cpp
 )
 
+
+ADD_EXECUTABLE(gps_constraint
+  gps_constraint.cpp
+  edge_se3exp_pointxyz_prior.cpp
+  #edge_se3exp_pointxyz.cpp
+)
+
 INCLUDE_DIRECTORIES(${CHOLMOD_INCLUDE_DIR})
 
 TARGET_LINK_LIBRARIES(multi_sensor_fusion core solver_cholmod types_sba types_slam3d_addons types_slam3d)
+TARGET_LINK_LIBRARIES(gps_constraint core solver_cholmod types_sba types_slam3d_addons types_slam3d)
 
 
