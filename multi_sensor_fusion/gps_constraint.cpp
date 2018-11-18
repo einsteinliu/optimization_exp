@@ -124,7 +124,11 @@ int main()
 
         g2o::EdgeSE3ExpXYZPointPrior* gps_constrains = new g2o::EdgeSE3ExpXYZPointPrior();
         gps_constrains->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex));
-        gps_constrains->setMeasurement(pose.t);
+
+        Vector3d noisyMeasurement = pose.t+0.5f*Vector3d(uniform(),
+                                                     uniform(),
+                                                     uniform());
+        gps_constrains->setMeasurement(noisyMeasurement);
         gps_constrains->setInformation(Matrix3d::Identity());
         optimizer.addEdge(gps_constrains);
     }

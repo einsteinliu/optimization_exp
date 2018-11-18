@@ -167,23 +167,23 @@ int main()
     {//Add the pose vertices
         g2o::SE3Quat curr_pose(pose.R,pose.t);
         g2o::VertexSE3Expmap* vertex = new g2o::VertexSE3Expmap();
-        vertex->setId(vertex_id);
-        vertex->setFixed(false);
+        vertex->setId(vertex_id);        
         curr_pose.setTranslation(curr_pose.translation());
+
 //        curr_pose.setTranslation(curr_pose.translation()+Vector3d(uniform(),
 //                                                                  uniform(),
 //                                                                  uniform()));
         vertex->setEstimate(curr_pose);                      
-
+        vertex->setFixed(false);
         se3_vertices.push_back(vertex);
         optimizer.addVertex(vertex);
         vertex_id++;
 
-        g2o::EdgeSE3ExpXYZPointPrior* gps_constrains = new g2o::EdgeSE3ExpXYZPointPrior();
-        gps_constrains->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex));
-        gps_constrains->setMeasurement(pose.t);
-        gps_constrains->setInformation(Matrix3d::Identity()*2);
-        optimizer.addEdge(gps_constrains);
+//        g2o::EdgeSE3ExpXYZPointPrior* gps_constrains = new g2o::EdgeSE3ExpXYZPointPrior();
+//        gps_constrains->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex));
+//        gps_constrains->setMeasurement(pose.t);
+//        gps_constrains->setInformation(Matrix3d::Identity()*2);
+//        optimizer.addEdge(gps_constrains);
     }
 
     map<g2o::VertexSE3Expmap*,Vector2d> vertex_connections;
@@ -193,9 +193,10 @@ int main()
         g2o::VertexSBAPointXYZ* X_Vertex = new g2o::VertexSBAPointXYZ();
         X_Vertex->setId(vertex_id);
         X_Vertex->setMarginalized(true);
-        X_Vertex->setEstimate(point + 3.0f*Vector3d(gauss_rand(0., 1),
-                                          gauss_rand(0., 1),
-                                          gauss_rand(0., 1)));
+        //Points initialization
+        X_Vertex->setEstimate(point + 0.5f*Vector3d(uniform(),
+                                                    uniform(),
+                                                    uniform()));
 
         vertex_connections.clear();
         for(auto pose_vertex:se3_vertices)
@@ -203,7 +204,8 @@ int main()
             Vector2d image_pixel = cam_params->cam_map(pose_vertex->estimate().map(point));
             if (image_pixel[0]>=0 && image_pixel[1]>=0 && image_pixel[0]<640 && image_pixel[1]<480)
             {
-                vertex_connections[pose_vertex]=image_pixel;
+                vertex_connections[pose_vertex][0] = image_pixel[0];
+                vertex_connections[pose_vertex][1] = image_pixel[1];
             }
         }
 
@@ -236,7 +238,7 @@ int main()
 
     optimizer.initializeOptimization();
     optimizer.setVerbose(true);
-    optimizer.optimize(80);
+    optimizer.optimize(30);
 
     double after = compute_error(optimizer,estimation_gt);
     double pose_after = compute_pose_error(se3_vertices,poses);
