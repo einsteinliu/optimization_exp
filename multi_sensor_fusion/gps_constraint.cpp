@@ -71,7 +71,7 @@ vector< CameraPose > generate_camera_poses()
 double compute_pose_error(vector<g2o::VertexSE3Expmap*> measure,vector<CameraPose> ground_truth)
 {
     double error = 0;
-    for(int i=0;i<measure.size();i++)
+    for(size_t i=0;i<measure.size();i++)
     {        
         error += (((g2o::SE3Quat)(measure[i]->estimate())).translation() - ground_truth[i].t).norm();
     }
@@ -81,22 +81,24 @@ double compute_pose_error(vector<g2o::VertexSE3Expmap*> measure,vector<CameraPos
 int main()
 {
     auto poses = generate_camera_poses();
-    bool DENSE = false;
+    bool DENSE = true;
 
     g2o::SparseOptimizer optimizer;
-    optimizer.setVerbose(false);
-    std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linearSolver;
-    if (DENSE) {
-      linearSolver = g2o::make_unique<g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>>();
-    } else {
-      linearSolver = g2o::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType>>();
-    }
+    //optimizer.setVerbose(true);
+//    std::unique_ptr<g2o::BlockSolverPL<6, 1>::LinearSolverType> linearSolver;
+//    if (DENSE) {
+//      linearSolver = g2o::make_unique<g2o::LinearSolverDense<g2o::BlockSolver_6_1::PoseMatrixType>>();
+//    } else {
+//      linearSolver = g2o::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolverPL<6, 1>::PoseMatrixType>>();
+//    }
 
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(
-      g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linearSolver))
-    );
+    auto linearSolverType = g2o::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolverPL<6, 1>::PoseMatrixType>>();
 
-    optimizer.setAlgorithm(solver);
+    auto solver = g2o::make_unique<g2o::BlockSolverPL<6, 1>>(std::move(linearSolverType));
+
+    g2o::OptimizationAlgorithmLevenberg* optimaAlgorithm = new g2o::OptimizationAlgorithmLevenberg(std::move(solver));
+
+    optimizer.setAlgorithm(optimaAlgorithm);
 
     vector<g2o::VertexSE3Expmap*> se3_vertices;
     int vertex_id = 0;
@@ -108,15 +110,12 @@ int main()
         vertex->setId(vertex_id);
         vertex->setFixed(false);
 
-//        if(vertex_id<2)
-//            vertex->setFixed(true);
-//        else
-//            vertex->setFixed(false);
-
         curr_pose.setTranslation(curr_pose.translation()+2.0f*Vector3d(uniform(),
                                                                   uniform(),
                                                                   uniform()));
         vertex->setEstimate(curr_pose);                      
+//        vertex->write(std::cout);
+//        std::cout<<"\n";
 
         se3_vertices.push_back(vertex);
         optimizer.addVertex(vertex);
@@ -125,9 +124,10 @@ int main()
         g2o::EdgeSE3ExpXYZPointPrior* gps_constrains = new g2o::EdgeSE3ExpXYZPointPrior();
         gps_constrains->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex));
 
-        Vector3d noisyMeasurement = pose.t+0.5f*Vector3d(uniform(),
+        Vector3d noisyMeasurement = pose.t+0.1f*Vector3d(uniform(),
                                                      uniform(),
                                                      uniform());
+
         gps_constrains->setMeasurement(noisyMeasurement);
         gps_constrains->setInformation(Matrix3d::Identity());
         optimizer.addEdge(gps_constrains);
